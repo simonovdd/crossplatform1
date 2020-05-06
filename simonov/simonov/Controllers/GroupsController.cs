@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using simonov.models;
+using Microsoft.AspNetCore.Authorization;
 
 namespace simonov.Controllers
 {
@@ -13,9 +14,9 @@ namespace simonov.Controllers
     [ApiController]
     public class GroupsController : ControllerBase
     {
-        private readonly GroupContext _context;
+        private readonly Context _context;
 
-        public GroupsController(GroupContext context)
+        public GroupsController(Context context)
         {
             _context = context;
         }
@@ -39,6 +40,14 @@ namespace simonov.Controllers
             }
 
             return @group;
+        }
+
+        [HttpGet("Big/{h}")]
+        [Authorize]
+        public IEnumerable<Group> GetBigGroups(int h)
+        {
+            return _context.getBigGroups(h);
+
         }
 
         // PUT: api/Groups/5
@@ -77,6 +86,7 @@ namespace simonov.Controllers
         // To protect from overposting attacks, enable the specific properties you want to bind to, for
         // more details, see https://go.microsoft.com/fwlink/?linkid=2123754.
         [HttpPost]
+        [Authorize(Roles = "admin")]
         public async Task<ActionResult<Group>> PostGroup(Group @group)
         {
             _context.Groups.Add(@group);

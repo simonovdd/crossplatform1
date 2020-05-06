@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using simonov.models;
+using Microsoft.AspNetCore.Authorization;
 
 namespace simonov.Controllers
 {
@@ -13,32 +14,40 @@ namespace simonov.Controllers
     [ApiController]
     public class StudentsController : ControllerBase
     {
-        private readonly StudentContext _context;
+        private readonly Context _context;
 
-        public StudentsController(StudentContext context)
+        public StudentsController(Context context)
         {
             _context = context;
         }
 
         // GET: api/Students
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Student>>> GetStudents()
+        public IEnumerable<Student> GetStudents()
         {
-            return await _context.Students.ToListAsync();
+            return _context.getAllStudents().ToList();
         }
 
         // GET: api/Students/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Student>> GetStudent(long id)
+        public Student GetStudent(long id)
         {
-            var student = await _context.Students.FindAsync(id);
+            return _context.getAllStudents().FirstOrDefault(s => s.Id == id);
+        }
 
-            if (student == null)
-            {
-                return NotFound();
-            }
+        [HttpGet("Headman")]
+        [Authorize]
+        public IEnumerable<Student> GetHeadmans()
+        {
+            return _context.getHeadmans();
 
-            return student;
+        }
+
+        [HttpGet("Find/{name}")]
+        [Authorize]
+        public IEnumerable<string> FindStudent(string name)
+        {
+            return _context.getStudentsGroup(name);
         }
 
         // PUT: api/Students/5
@@ -76,10 +85,17 @@ namespace simonov.Controllers
         // POST: api/Students
         // To protect from overposting attacks, enable the specific properties you want to bind to, for
         // more details, see https://go.microsoft.com/fwlink/?linkid=2123754.
-        [HttpPost]
-        public async Task<ActionResult<Student>> PostStudent(Student student)
+        [HttpPost("{id}")]
+        [Authorize(Roles = "admin")]
+        public async Task<ActionResult<Student>> PostStudent(Student student, long id)
         {
-            _context.Students.Add(student);
+            var G = await _context.Groups.FindAsync(id);
+
+            if (G == null)
+                return BadRequest();
+
+            G.Students.Add(student);
+
             await _context.SaveChangesAsync();
 
             return CreatedAtAction("GetStudent", new { id = student.Id }, student);
@@ -89,13 +105,13 @@ namespace simonov.Controllers
         [HttpDelete("{id}")]
         public async Task<ActionResult<Student>> DeleteStudent(long id)
         {
-            var student = await _context.Students.FindAsync(id);
+            var student = _context.getAllStudents().FirstOrDefault(s => s.Id == id);
             if (student == null)
             {
                 return NotFound();
             }
 
-            _context.Students.Remove(student);
+            _context.Groups.Where(g => g.Students.FirstOrDefault(s => s.Id == id) != null).FirstOrDefault().Students.Remove(student);
             await _context.SaveChangesAsync();
 
             return student;
@@ -103,7 +119,7 @@ namespace simonov.Controllers
 
         private bool StudentExists(long id)
         {
-            return _context.Students.Any(e => e.Id == id);
+            return _context.getAllStudents().Any(e => e.Id == id);
         }
     }
 }
